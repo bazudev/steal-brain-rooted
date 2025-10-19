@@ -143,8 +143,8 @@ function BrainrotController:DrawDefaultPath(waypoints) -- Draw path waypoints
 end
 
 function BrainrotController:KnitStart()
-	local BasePlayer = workspace:WaitForChild("BasePlayer")
-	TestingTargetPosition = BasePlayer:WaitForChild("target").Position
+	-- local BasePlayer = workspace:WaitForChild("BasePlayer")
+	-- TestingTargetPosition = BasePlayer:WaitForChild("target").Position
 	BrainrotService = Knit.GetService("BrainrotService")
 
 	print("BrainrotController on Start")
