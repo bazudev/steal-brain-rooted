@@ -16,6 +16,7 @@ local BrainrotService = Knit.CreateService({
 		OnDefaultPathGenrated = Knit.CreateSignal(),
 		BrainRootAdded = Knit.CreateSignal(),
 		BrainRootRemoved = Knit.CreateSignal(),
+		PlayAnimation = Knit.CreateSignal(),
 	},
 	BrainRoots = {},
 	ReachedConnections = {},
@@ -30,11 +31,6 @@ local path = PathfindingService:CreatePath()
 
 local TEST_DESTINATION = Vector3.new(100, 0, 100)
 
-local waypoints
-local nextWaypointIndex
-local reachedConnection
-local blockedConnection
-
 local defaultWayPoints = {}
 
 --|| Client Functions ||--
@@ -47,6 +43,30 @@ function BrainrotService.Client:TestEvent(player: Player): boolean
 end
 
 --|| Server Functions ||--
+function BrainrotService:AttatchToPlayer(player: Players)
+	local character = player.Character
+	if not character then
+		print("charater not found")
+		return
+	end
+	local npc = testingNPC:clone()
+	BrainrotService:SetupBrainrot(npc, "Grabbed")
+	npc.Parent = workspace
+	-- local humanoidNpc = npc:WaitForChild("Humanoid")
+	-- humanoidNpc.PlatformStand = true
+
+	local hand = character:WaitForChild("RightHand")
+	local rotation = CFrame.Angles(math.rad(-90), 0, 0)
+	npc.HumanoidRootPart.CFrame = hand.CFrame * CFrame.new(0, -1, 0) * rotation
+	local weld = Instance.new("Motor6D")
+	weld.Part0 = hand
+	weld.Part1 = npc.HumanoidRootPart
+	weld.C0 = CFrame.new(0, -1, 0) * rotation
+	weld.C1 = CFrame.new(0, 0, 0)
+	weld.Parent = hand
+	npc.HumanoidRootPart.Anchored = false
+	self.Client.PlayAnimation:Fire(player, character, "toolnone", "ToolNoneAnim")
+end
 function BrainrotService:ChangeWaypoint(player, id)
 	local target_pos = HomePlayerService:GetPlayerHome(player).target.Position
 	local brainrot = self.BrainRoots[id]
@@ -157,6 +177,11 @@ function BrainrotService:SetupBrainrot(model: Model, group: string)
 			continue
 		end
 		v.CollisionGroup = group
+		if group == "Grabbed" then
+			v.Massless = true
+		else
+			v.Massless = false
+		end
 	end
 end
 
@@ -170,6 +195,7 @@ function BrainrotService:KnitStart()
 		player.CharacterAdded:Connect(function(character)
 			task.defer(function()
 				BrainrotService:SetupBrainrot(character, "Player")
+				BrainrotService:AttatchToPlayer(player)
 			end)
 		end)
 
@@ -187,8 +213,15 @@ end
 function BrainrotService:KnitInit()
 	PhysicsService:RegisterCollisionGroup("Brainrot")
 	PhysicsService:RegisterCollisionGroup("Player")
+	PhysicsService:RegisterCollisionGroup("Grabbed")
+
+	PhysicsService:CollisionGroupSetCollidable("Grabbed", "Default", false)
+	PhysicsService:CollisionGroupSetCollidable("Grabbed", "Grabbed", false)
+	PhysicsService:CollisionGroupSetCollidable("Grabbed", "Player", false)
+
 	PhysicsService:CollisionGroupSetCollidable("Brainrot", "Player", false)
 	PhysicsService:CollisionGroupSetCollidable("Brainrot", "Brainrot", false)
+
 	PhysicsService:CollisionGroupSetCollidable("Player", "Default", true)
 end
 

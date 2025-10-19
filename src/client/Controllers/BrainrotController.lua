@@ -105,6 +105,10 @@ function BrainrotController:PlayAnimation(character, animType, animName)
 	track:Play()
 	return track
 end
+function BrainrotController:StopAnimation(character)
+	local humanoid = character:WaitForChild("Humanoid")
+	print(humanoid:GetPlayingAnimationTracks())
+end
 function BrainrotController:AddBrainrot(id, brainrot)
 	self._Brainrots[id] = brainrot
 end
@@ -161,6 +165,9 @@ function BrainrotController:KnitStart()
 	end)
 	BrainrotService.BrainRootRemoved:Connect(function(id)
 		BrainrotController:RemoveBrainrot(id)
+	end)
+	BrainrotService.PlayAnimation:Connect(function(character, animType, animName)
+		BrainrotController:PlayAnimation(character, animType, animName)
 	end)
 	BrainrotController:LoopController()
 	BrainrotController:InputHandle()
