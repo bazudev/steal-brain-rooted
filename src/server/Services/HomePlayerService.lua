@@ -98,6 +98,7 @@ function HomePlayerService:GetEmptyHome()
 			return home
 		end
 	end
+	return nil
 end
 function HomePlayerService:GetPlayerHome(player)
 	for _, home in pairs(self.Homes) do
@@ -105,6 +106,7 @@ function HomePlayerService:GetPlayerHome(player)
 			return home
 		end
 	end
+	return nil
 end
 function HomePlayerService:GetEmptyPlatform(home)
 	for _, platform in pairs(home.platforms) do
@@ -112,6 +114,21 @@ function HomePlayerService:GetEmptyPlatform(home)
 			return platform
 		end
 	end
+	return nil
+end
+function HomePlayerService:MoveToPlatform(player, brainrot)
+	local home = self:GetPlayerHome(player)
+	if not home then
+		return nil
+	end
+	local platform = self:GetEmptyPlatform(home)
+	if not platform then
+		return nil
+	end
+	platform.status = true
+	platform.brainrot = brainrot
+	brainrot.object:PivotTo(platform.platform.CFrame)
+	brainrot.object.HumanoidRootPart.Anchored = true
 end
 
 -- KNIT START

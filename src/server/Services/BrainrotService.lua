@@ -6,7 +6,7 @@ local Knit = require(game:GetService("ReplicatedStorage").Packages.Knit)
 
 -- Services
 local Players = game:GetService("Players")
-local DataService
+local HomePlayerService
 
 local BrainrotService = Knit.CreateService({
 	Name = "BrainrotService",
@@ -37,8 +37,8 @@ local blockedConnection
 local defaultWayPoints = {}
 
 --|| Client Functions ||--
-function BrainrotService.Client:ChangeWaypoint(player: Player, id, target_pos: Vector3)
-	BrainrotService:ChangeWaypoint(player, id, target_pos)
+function BrainrotService.Client:ChangeWaypoint(player: Player, id)
+	BrainrotService:ChangeWaypoint(player, id)
 end
 
 function BrainrotService.Client:TestEvent(player: Player): boolean
@@ -46,7 +46,8 @@ function BrainrotService.Client:TestEvent(player: Player): boolean
 end
 
 --|| Server Functions ||--
-function BrainrotService:ChangeWaypoint(player, id, target_pos: Vector3)
+function BrainrotService:ChangeWaypoint(player, id)
+	local target_pos = HomePlayerService:GetPlayerHome(player).target.Position
 	local brainrot = self.BrainRoots[id]
 	if not brainrot then
 		return
@@ -62,7 +63,7 @@ function BrainrotService:ChangeWaypoint(player, id, target_pos: Vector3)
 		self.BrainRoots[id] = nil
 		-- remove brainrot to in client
 		self.Client.BrainRootRemoved:FireAll(id)
-		self:Moving(self.PlayerBrainRoots[player], newWayPoints, true)
+		self:Moving(self.PlayerBrainRoots[player], newWayPoints, true, player)
 	end
 end
 
@@ -107,7 +108,8 @@ function BrainrotService:Spawner()
 	end)
 end
 
-function BrainrotService:Moving(brainrot, waypoints, isToPlayer: boolean)
+function BrainrotService:Moving(brainrot, waypoints, isToPlayer: boolean, player: Player | nil)
+	player = player or nil
 	isToPlayer = isToPlayer or false
 	if #waypoints <= 1 then
 		print("waypoint count is less than 1")
@@ -135,6 +137,7 @@ function BrainrotService:Moving(brainrot, waypoints, isToPlayer: boolean)
 				self.ReachedConnections[id] = nil
 				if isToPlayer then
 					-- change position to the plafrom player base
+					HomePlayerService:MoveToPlatform(player, brainrot)
 				else
 					self:Destroy(id)
 				end
@@ -149,6 +152,7 @@ end
 
 -- KNIT START
 function BrainrotService:KnitStart()
+	HomePlayerService = Knit.GetService("HomePlayerService")
 	BrainrotService:GenerateDefaultWay()
 	BrainrotService:Spawner()
 

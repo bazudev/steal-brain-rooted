@@ -78,7 +78,7 @@ function BrainrotController:InputHandle()
 				return
 			end
 			print("target:", TestingTargetPosition)
-			BrainrotService:ChangeWaypoint(self._closestBrainrot, TestingTargetPosition)
+			BrainrotService:ChangeWaypoint(self._closestBrainrot)
 		end
 	end)
 end
