@@ -1,6 +1,8 @@
 -- Services
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
 -- Knit packages
 local Packages = ReplicatedStorage.Packages
@@ -8,19 +10,79 @@ local Knit = require(Packages.Knit)
 
 -- Player
 local player = Players.LocalPlayer
-local testingNPC = workspace.TestingNPC
 
 -- Services
 local BrainrotService
 
+-- variable
+local TestingTargetPosition = Vector3.new(100, 0, 100)
+
 -- TemplateController
 local BrainrotController = Knit.CreateController({
 	Name = "BrainrotController",
+	_Brainrots = {},
+	_closestBrainrot = nil,
 })
 
 --|| Local Functions ||--
+-- Fungsi untuk hitung jarak player ↔ NPC
+local function GetDistanceFromNPC(npcObject)
+	if not npcObject then
+		return math.huge
+	end
+	return (player.Character.HumanoidRootPart.Position - npcObject.HumanoidRootPart.Position).Magnitude
+end
+
+-- Fungsi untuk cari NPC terdekat dalam range tertentu
+local function GetClosestNPCInRange(range, brainrots)
+	local closest = nil
+	local minDist = range
+	if not brainrots then
+		return nil, nil
+	end
+
+	for _, brain in pairs(brainrots) do
+		local dist = GetDistanceFromNPC(brain.object)
+		if dist < minDist then
+			minDist = dist
+			closest = brain
+		end
+	end
+
+	return closest, minDist
+end
 
 --|| Functions ||--
+-- update setiap frame
+function BrainrotController:LoopController()
+	RunService.RenderStepped:Connect(function()
+		local closest, dist = GetClosestNPCInRange(20, self._Brainrots)
+
+		if closest then
+			self._closestBrainrot = closest.id
+		else
+			self._closestBrainrot = nil
+		end
+	end)
+end
+function BrainrotController:InputHandle()
+	UserInputService.InputBegan:Connect(function(input, processed)
+		-- ignore if player is typing in chat or textbox
+		if processed then
+			return
+		end
+
+		-- detect E key
+		if input.KeyCode == Enum.KeyCode.E then
+			if not self._closestBrainrot then
+				return
+			end
+			print("target:", TestingTargetPosition)
+			BrainrotService:ChangeWaypoint(self._closestBrainrot, TestingTargetPosition)
+		end
+	end)
+end
+
 function BrainrotController:PlayAnimation(character, animType, animName)
 	local humanoid = character:WaitForChild("Humanoid")
 	local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
@@ -43,6 +105,13 @@ function BrainrotController:PlayAnimation(character, animType, animName)
 	track:Play()
 	return track
 end
+function BrainrotController:AddBrainrot(id, brainrot)
+	self._Brainrots[id] = brainrot
+end
+function BrainrotController:RemoveBrainrot(id)
+	self._Brainrots[id] = nil
+end
+
 function BrainrotController:DrawDefaultPath(waypoints) -- Draw path waypoints
 	for i, waypoint in ipairs(waypoints) do
 		-- Create Dot
@@ -74,6 +143,8 @@ function BrainrotController:DrawDefaultPath(waypoints) -- Draw path waypoints
 end
 
 function BrainrotController:KnitStart()
+	local BasePlayer = workspace:WaitForChild("BasePlayer")
+	TestingTargetPosition = BasePlayer:WaitForChild("target").Position
 	BrainrotService = Knit.GetService("BrainrotService")
 
 	print("BrainrotController on Start")
@@ -84,6 +155,15 @@ function BrainrotController:KnitStart()
 	BrainrotService.BrainRootMoving:Connect(function(character)
 		BrainrotController:PlayAnimation(character, "walk", "WalkAnim")
 	end)
+	BrainrotService.BrainRootAdded:Connect(function(id, brainrot)
+		print("add brainrot")
+		BrainrotController:AddBrainrot(id, brainrot)
+	end)
+	BrainrotService.BrainRootRemoved:Connect(function(id)
+		BrainrotController:RemoveBrainrot(id)
+	end)
+	BrainrotController:LoopController()
+	BrainrotController:InputHandle()
 end
 
 return BrainrotController

@@ -13,9 +13,12 @@ local BrainrotService = Knit.CreateService({
 	Client = {
 		BrainRootMoving = Knit.CreateSignal(),
 		OnDefaultPathGenrated = Knit.CreateSignal(),
+		BrainRootAdded = Knit.CreateSignal(),
+		BrainRootRemoved = Knit.CreateSignal(),
 	},
 	BrainRoots = {},
 	ReachedConnections = {},
+	PlayerBrainRoots = {},
 })
 local testingNPC = workspace.TestingNPC
 local start_part = workspace:WaitForChild("Start")
@@ -34,9 +37,33 @@ local blockedConnection
 local defaultWayPoints = {}
 
 --|| Client Functions ||--
+function BrainrotService.Client:ChangeWaypoint(player: Player, id, target_pos: Vector3)
+	BrainrotService:ChangeWaypoint(player, id, target_pos)
+end
 
 function BrainrotService.Client:TestEvent(player: Player): boolean
 	return false
+end
+
+--|| Server Functions ||--
+function BrainrotService:ChangeWaypoint(player, id, target_pos: Vector3)
+	local brainrot = self.BrainRoots[id]
+	if not brainrot then
+		return
+	end
+
+	local success, _error = pcall(function()
+		path:ComputeAsync(brainrot.object.HumanoidRootPart.Position, target_pos)
+	end)
+
+	if success and path.Status == Enum.PathStatus.Success then
+		local newWayPoints = path:GetWaypoints()
+		self.PlayerBrainRoots[player] = self.BrainRoots[id]
+		self.BrainRoots[id] = nil
+		-- remove brainrot to in client
+		self.Client.BrainRootRemoved:FireAll(id)
+		self:Moving(self.PlayerBrainRoots[player], newWayPoints, true)
+	end
 end
 
 function BrainrotService:GenerateDefaultWay()
@@ -48,10 +75,12 @@ function BrainrotService:GenerateDefaultWay()
 		self.Client.OnDefaultPathGenrated:FireAll(defaultWayPoints)
 	end
 end
+function BrainrotService:ChangeToPlayer(id, player) end
 function BrainrotService:Destroy(id)
 	local brainrot = self.BrainRoots[id]
 	brainrot.object:Destroy()
 	self.BrainRoots[id] = nil
+	self.Client.BrainRootRemoved:FireAll(id)
 end
 function BrainrotService:SpawnBrainrot()
 	local id = tostring(os.time())
@@ -66,6 +95,8 @@ function BrainrotService:SpawnBrainrot()
 	}
 	self.BrainRoots[id] = brainrot
 	self:Moving(brainrot, defaultWayPoints)
+
+	self.Client.BrainRootAdded:FireAll(id, brainrot)
 end
 function BrainrotService:Spawner()
 	task.spawn(function()
@@ -76,7 +107,8 @@ function BrainrotService:Spawner()
 	end)
 end
 
-function BrainrotService:Moving(brainrot, waypoints)
+function BrainrotService:Moving(brainrot, waypoints, isToPlayer: boolean)
+	isToPlayer = isToPlayer or false
 	if #waypoints <= 1 then
 		print("waypoint count is less than 1")
 		return
@@ -95,19 +127,23 @@ function BrainrotService:Moving(brainrot, waypoints)
 
 	if not self.ReachedConnections[id] then
 		self.ReachedConnections[id] = humanoid.MoveToFinished:Connect(function(reached)
-			if self.BrainRoots[id].path_index < #waypoints then
-				self.BrainRoots[id].path_index += 1
-				humanoid:MoveTo(waypoints[self.BrainRoots[id].path_index].Position)
+			if brainrot.path_index < #waypoints then
+				brainrot.path_index += 1
+				humanoid:MoveTo(waypoints[brainrot.path_index].Position)
 			else
 				self.ReachedConnections[id]:Disconnect()
 				self.ReachedConnections[id] = nil
-				self:Destroy(id)
+				if isToPlayer then
+					-- change position to the plafrom player base
+				else
+					self:Destroy(id)
+				end
 			end
 		end)
 	end
 
-	self.BrainRoots[id].path_index = 2
-	humanoid:MoveTo(waypoints[self.BrainRoots[id].path_index].Position)
+	brainrot.path_index = 2
+	humanoid:MoveTo(waypoints[brainrot.path_index].Position)
 	self.Client.BrainRootMoving:FireAll(character)
 end
 
