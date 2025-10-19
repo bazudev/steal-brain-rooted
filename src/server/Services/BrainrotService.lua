@@ -2,6 +2,7 @@
 local MarketplaceService = game:GetService("MarketplaceService")
 local PathfindingService = game:GetService("PathfindingService")
 local RunService = game:GetService("RunService")
+local PhysicsService = game:GetService("PhysicsService")
 local Knit = require(game:GetService("ReplicatedStorage").Packages.Knit)
 
 -- Services
@@ -86,6 +87,7 @@ end
 function BrainrotService:SpawnBrainrot()
 	local id = tostring(os.time())
 	local npc = testingNPC:clone()
+	BrainrotService:SetupBrainrot(npc, "Brainrot")
 	npc.Parent = workspace
 	npc:PivotTo(start_part.CFrame)
 
@@ -149,6 +151,14 @@ function BrainrotService:Moving(brainrot, waypoints, isToPlayer: boolean, player
 	humanoid:MoveTo(waypoints[brainrot.path_index].Position)
 	self.Client.BrainRootMoving:FireAll(character)
 end
+function BrainrotService:SetupBrainrot(model: Model, group: string)
+	for i, v in ipairs(model:GetDescendants()) do
+		if not v:IsA("BasePart") then
+			continue
+		end
+		v.CollisionGroup = group
+	end
+end
 
 -- KNIT START
 function BrainrotService:KnitStart()
@@ -156,11 +166,11 @@ function BrainrotService:KnitStart()
 	BrainrotService:GenerateDefaultWay()
 	BrainrotService:Spawner()
 
-	local function characterAdded(player: Player, character: Instance) end
-
 	local function playerAdded(player: Player)
 		player.CharacterAdded:Connect(function(character)
-			characterAdded(player, character)
+			task.defer(function()
+				BrainrotService:SetupBrainrot(character, "Player")
+			end)
 		end)
 
 		-- code playeradded
@@ -173,6 +183,13 @@ function BrainrotService:KnitStart()
 
 	print("BrainrotService Started")
 	-- KNIT END
+end
+function BrainrotService:KnitInit()
+	PhysicsService:RegisterCollisionGroup("Brainrot")
+	PhysicsService:RegisterCollisionGroup("Player")
+	PhysicsService:CollisionGroupSetCollidable("Brainrot", "Player", false)
+	PhysicsService:CollisionGroupSetCollidable("Brainrot", "Brainrot", false)
+	PhysicsService:CollisionGroupSetCollidable("Player", "Default", true)
 end
 
 return BrainrotService
