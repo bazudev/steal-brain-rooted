@@ -17,10 +17,12 @@ local BrainrotService = Knit.CreateService({
 		BrainRootAdded = Knit.CreateSignal(),
 		BrainRootRemoved = Knit.CreateSignal(),
 		PlayAnimation = Knit.CreateSignal(),
+		StopAnimation = Knit.CreateSignal(),
 	},
 	BrainRoots = {},
 	ReachedConnections = {},
 	PlayerBrainRoots = {},
+	PlayerGrabbedBrainRoots = {},
 })
 local testingNPC = workspace.TestingNPC
 local start_part = workspace:WaitForChild("Start")
@@ -37,28 +39,73 @@ local defaultWayPoints = {}
 function BrainrotService.Client:ChangeWaypoint(player: Player, id)
 	BrainrotService:ChangeWaypoint(player, id)
 end
+function BrainrotService.Client:AttatchToPlayer(player: Player, platformCframe, brainrotId)
+	BrainrotService:AttatchToPlayer(player, platformCframe, brainrotId)
+end
+function BrainrotService.Client:DetatchFromPlayer(player: Player)
+	BrainrotService:DetatchFromPlayer(player)
+end
+function BrainrotService.Client:MoveToPlatform(player: Players, platformId)
+	BrainrotService:MoveToPlatform(player, platformId)
+end
 
 function BrainrotService.Client:TestEvent(player: Player): boolean
 	return false
 end
 
 --|| Server Functions ||--
-function BrainrotService:AttatchToPlayer(player: Players)
+function BrainrotService:MoveToPlatform(player: Players, platformId)
+	local playerGrabBrainroot = self.PlayerGrabbedBrainRoots[player]
+	if not playerGrabBrainroot then
+		return
+	end
+	print("platform id :", platformId)
+	BrainrotService:RemoveWeld(player)
+	HomePlayerService:MoveToPlatformById(player, platformId, playerGrabBrainroot.brainrot)
+	-- playerGrabBrainroot.brainrot.object.HumanoidRootPart.CFrame = playerGrabBrainroot.oldCframe
+	BrainrotService:SetupBrainrot(playerGrabBrainroot.brainrot.object, "Brainrot")
+
+	self.PlayerBrainRoots[player] = {
+		player = player,
+		brainrot = playerGrabBrainroot.brainrot,
+	}
+
+	self.PlayerGrabbedBrainRoots[player] = nil
+	self.Client.StopAnimation:Fire(player, player.Character)
+end
+
+function BrainrotService:AttatchToPlayer(player: Players, platformId, brainrotId)
+	local playerBrainrot = BrainrotService:FindPlayerBrainrot(brainrotId)
+	if not playerBrainrot then
+		return
+	end
+
 	local character = player.Character
 	if not character then
 		print("charater not found")
 		return
 	end
-	local npc = testingNPC:clone()
+	local playerGrabBrainroot = {
+		oldPlayer = playerBrainrot.player,
+		brainrot = playerBrainrot.brainrot,
+		platformId = platformId,
+		oldCframe = nil,
+	}
+	self.PlayerBrainRoots[playerGrabBrainroot.oldPlayer] = nil
+
+	local npc = playerGrabBrainroot.brainrot.object
 	BrainrotService:SetupBrainrot(npc, "Grabbed")
 	npc.Parent = workspace
-	-- local humanoidNpc = npc:WaitForChild("Humanoid")
-	-- humanoidNpc.PlatformStand = true
+
+	-- setPlayer to playerGrabBrainroot
+	playerGrabBrainroot.oldCframe = npc.HumanoidRootPart.CFrame
+	self.PlayerGrabbedBrainRoots[player] = playerGrabBrainroot
 
 	local hand = character:WaitForChild("RightHand")
 	local rotation = CFrame.Angles(math.rad(-90), 0, 0)
 	npc.HumanoidRootPart.CFrame = hand.CFrame * CFrame.new(0, -1, 0) * rotation
 	local weld = Instance.new("Motor6D")
+	weld.Name = "righthandweld"
 	weld.Part0 = hand
 	weld.Part1 = npc.HumanoidRootPart
 	weld.C0 = CFrame.new(0, -1, 0) * rotation
@@ -66,6 +113,41 @@ function BrainrotService:AttatchToPlayer(player: Players)
 	weld.Parent = hand
 	npc.HumanoidRootPart.Anchored = false
 	self.Client.PlayAnimation:Fire(player, character, "toolnone", "ToolNoneAnim")
+end
+function BrainrotService:DetatchFromPlayer(player)
+	local playerGrabBrainroot = self.PlayerGrabbedBrainRoots[player]
+	if not playerGrabBrainroot then
+		return
+	end
+
+	BrainrotService:RemoveWeld(player)
+	HomePlayerService:MoveToPlatformById(
+		playerGrabBrainroot.oldPlayer,
+		playerGrabBrainroot.platformId,
+		playerGrabBrainroot.brainrot
+	)
+
+	playerGrabBrainroot.brainrot.object.HumanoidRootPart.CFrame = playerGrabBrainroot.oldCframe
+	BrainrotService:SetupBrainrot(playerGrabBrainroot.brainrot.object, "Brainrot")
+
+	self.PlayerBrainRoots[playerGrabBrainroot.oldPlayer] = {
+		player = playerGrabBrainroot.oldPlayer,
+		brainrot = playerGrabBrainroot.brainrot,
+	}
+
+	self.PlayerGrabbedBrainRoots[player] = nil
+	self.Client.StopAnimation:Fire(player, player.Character)
+end
+function BrainrotService:RemoveWeld(player: Player)
+	local character = player.Character
+	local hand = character:FindFirstChild("RightHand")
+
+	for _, obj in pairs(hand:GetChildren()) do
+		if obj:IsA("Motor6D") and obj.Name == "righthandweld" then
+			print("detory motor6d")
+			obj:Destroy()
+		end
+	end
 end
 function BrainrotService:ChangeWaypoint(player, id)
 	local target_pos = HomePlayerService:GetPlayerHome(player).target.Position
@@ -80,11 +162,14 @@ function BrainrotService:ChangeWaypoint(player, id)
 
 	if success and path.Status == Enum.PathStatus.Success then
 		local newWayPoints = path:GetWaypoints()
-		self.PlayerBrainRoots[player] = self.BrainRoots[id]
+		self.PlayerBrainRoots[player] = {
+			player = player,
+			brainrot = self.BrainRoots[id],
+		}
 		self.BrainRoots[id] = nil
 		-- remove brainrot to in client
 		self.Client.BrainRootRemoved:FireAll(id)
-		self:Moving(self.PlayerBrainRoots[player], newWayPoints, true, player)
+		self:Moving(self.PlayerBrainRoots[player].brainrot, newWayPoints, true, player)
 	end
 end
 
@@ -97,7 +182,15 @@ function BrainrotService:GenerateDefaultWay()
 		self.Client.OnDefaultPathGenrated:FireAll(defaultWayPoints)
 	end
 end
-function BrainrotService:ChangeToPlayer(id, player) end
+function BrainrotService:FindPlayerBrainrot(brainrotId)
+	for _, data in pairs(self.PlayerBrainRoots) do
+		if data.brainrot.id == brainrotId then
+			return data
+		end
+	end
+
+	return nil
+end
 function BrainrotService:Destroy(id)
 	local brainrot = self.BrainRoots[id]
 	brainrot.object:Destroy()
@@ -195,7 +288,6 @@ function BrainrotService:KnitStart()
 		player.CharacterAdded:Connect(function(character)
 			task.defer(function()
 				BrainrotService:SetupBrainrot(character, "Player")
-				BrainrotService:AttatchToPlayer(player)
 			end)
 		end)
 

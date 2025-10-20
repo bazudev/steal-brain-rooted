@@ -129,6 +129,29 @@ function HomePlayerService:MoveToPlatform(player, brainrot)
 	platform.brainrot = brainrot
 	brainrot.object:PivotTo(platform.platform.CFrame)
 	brainrot.object.HumanoidRootPart.Anchored = true
+	self.Client.HomeUpdated:FireAll(self.Homes)
+end
+function HomePlayerService:MoveToPlatformById(player, platformID, brainrot)
+	local home = self:GetPlayerHome(player)
+	if not home then
+		return nil
+	end
+	local platform = self:FindPlatfromById(home, platformID)
+	if not platform then
+		return nil
+	end
+	platform.status = true
+	platform.brainrot = brainrot
+	brainrot.object:PivotTo(platform.platform.CFrame)
+	brainrot.object.HumanoidRootPart.Anchored = true
+end
+function HomePlayerService:FindPlatfromById(home, platformID)
+	for _, platform in pairs(home.platforms) do
+		if platform.id == platformID then
+			return platform
+		end
+	end
+	return nil
 end
 
 -- KNIT START

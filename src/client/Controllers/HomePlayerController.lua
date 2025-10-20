@@ -13,6 +13,7 @@ local player = Players.LocalPlayer
 
 -- Services
 local HomePlayerService
+local BrainrotService
 
 -- TemplateController
 local HomePlayerController = Knit.CreateController({
@@ -51,6 +52,26 @@ local function GetClosestPlatformInRange(range, platforms)
 
 	return closest, minDist
 end
+-- Fungsi untuk cari Platform terdekat dalam range tertentu
+local function GetClosestPlatformAllInRange(range, homes)
+	local closest = nil
+	local minDist = range
+	if not homes then
+		return nil, nil
+	end
+
+	for _, home in pairs(homes) do
+		for _, platform in pairs(home.platforms) do
+			local dist = GetDistanceFromPlatform(platform.platform)
+			if dist < minDist then
+				minDist = dist
+				closest = platform
+			end
+		end
+	end
+
+	return closest, minDist
+end
 
 --|| Functions ||--
 -- update setiap frame
@@ -59,12 +80,15 @@ function HomePlayerController:LoopController()
 		if self._PlayerHome == nil then
 			return
 		end
-		local closest, dist = GetClosestPlatformInRange(20, self._PlayerHome.platforms)
+		local closest, dist
+		if self._grabBrainrot then
+			closest, dist = GetClosestPlatformInRange(20, self._PlayerHome.platforms)
+		else
+			closest, dist = GetClosestPlatformAllInRange(20, self._Homes)
+		end
 
 		if closest then
-			self._closestPlatform = closest.id
-
-			print("closest", self._closestPlatform)
+			self._closestPlatform = closest
 		else
 			self._closestPlatfrom = nil
 		end
@@ -83,7 +107,20 @@ function HomePlayerController:InputHandle()
 				return
 			end
 			self._grabBrainrot = self._closestPlatform.brainrot
+			if self._grabBrainrot then
+				BrainrotService:AttatchToPlayer(self._closestPlatform.platform.CFrame, self._grabBrainrot.id)
+			else
+				print("no brainrot")
+			end
 		elseif input.KeyCode == Enum.KeyCode.E and self._grabBrainrot then
+			if not self._closestPlatform then
+				return
+			end
+			BrainrotService:MoveToPlatform(self._closestPlatform.id)
+			self._grabBrainrot = nil
+		end
+		if input.KeyCode == Enum.KeyCode.R and self._grabBrainrot then
+			BrainrotService:DetatchFromPlayer()
 			self._grabBrainrot = nil
 		end
 	end)
@@ -122,6 +159,7 @@ end
 
 function HomePlayerController:KnitStart()
 	HomePlayerService = Knit.GetService("HomePlayerService")
+	BrainrotService = Knit.GetService("BrainrotService")
 	HomePlayerService.CharacterAdded:Connect(function(homes)
 		self:CharacterAdded(homes)
 	end)
