@@ -16,19 +16,35 @@ local ToolsService = Knit.CreateService({
 })
 
 --|| Client Functions ||--
-function ToolsService.Client:TakeDamage(player: Player, hit: Player)
-	ToolsService:TakeDamage(player, hit)
-end
 
 function ToolsService.Client:TestEvent(player: Player): boolean
 	return false
 end
 
 -- KNIT START
-function ToolsService:TakeDamage(player: Player, hit: Player)
+function ToolsService:TakeDamage(hit: Player)
 	print("hit player ")
 	BrainrotService:DetatchFromPlayer(hit)
 	HomePlayerService:BackToHome(hit)
+end
+function ToolsService:SetupTool(player)
+	local backpack = player:WaitForChild("Backpack")
+	print("setup tools", backpack, backpack:GetChildren())
+	for _, item in ipairs(backpack:GetChildren()) do
+		print(item.Name, item:IsA("Tool"))
+		if item.Name == "Baseballbat" and item:IsA("Tool") then
+			local body = item:WaitForChild("Bat")
+			body.Touched:Connect(function(hit)
+				if not hit or not hit.Parent then
+					return
+				end
+				local Humanoid = hit.Parent:FindFirstChildOfClass("Humanoid")
+				if Humanoid then
+					ToolsService:TakeDamage(hit.Parent)
+				end
+			end)
+		end
+	end
 end
 function ToolsService:KnitStart()
 	BrainrotService = Knit.GetService("BrainrotService")
@@ -36,6 +52,7 @@ function ToolsService:KnitStart()
 	local function playerAdded(player: Player)
 		player.CharacterAdded:Connect(function(character)
 			self.Client.CharacterAdded:Fire(player, character)
+			ToolsService:SetupTool(player)
 		end)
 
 		-- code playeradded

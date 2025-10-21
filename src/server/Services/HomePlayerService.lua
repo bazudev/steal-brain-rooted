@@ -102,7 +102,7 @@ function HomePlayerService:GetEmptyHome()
 end
 function HomePlayerService:GetPlayerHome(player)
 	for _, home in pairs(self.Homes) do
-		if home.player == player then
+		if home.player and home.player.Name == player.Name then
 			return home
 		end
 	end
@@ -155,12 +155,14 @@ function HomePlayerService:FindPlatfromById(home, platformID)
 end
 function HomePlayerService:BackToHome(player: Player)
 	local home = self:GetPlayerHome(player)
+	print("player home", player.Name, home, self.Homes)
 	if not home then
 		return nil
 	end
 
 	local targetWorld = home.target.CFrame
-	player.Character.HumanoidRootPart.CFrame = targetWorld
+	-- local character = player.Character or player.CharacterAdded:Wait()
+	player.HumanoidRootPart.CFrame = targetWorld
 end
 
 -- KNIT START

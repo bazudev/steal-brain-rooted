@@ -40,15 +40,6 @@ function ToolsController:HandleBaseballBat(tool)
 	tool.Unequipped:Connect(function()
 		print("baseball bat unequipped")
 	end)
-	local body = tool:WaitForChild("Bat")
-	body.Touched:Connect(function(hit)
-		if not hit or not hit.Parent then
-			return
-		end
-		local Humanoid = hit.Parent:FindFirstChildOfClass("Humanoid")
-		print("hit:", hit.Parent)
-		ToolsService:TakeDamage(hit.Parent)
-	end)
 end
 function ToolsController:SetupAnimation(tool)
 	local character = player.Character or player.CharacterAdded:Wait()
