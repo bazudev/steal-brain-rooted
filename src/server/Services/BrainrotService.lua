@@ -18,6 +18,7 @@ local BrainrotService = Knit.CreateService({
 		BrainRootRemoved = Knit.CreateSignal(),
 		PlayAnimation = Knit.CreateSignal(),
 		StopAnimation = Knit.CreateSignal(),
+		CharacterAdded = Knit.CreateSignal(),
 	},
 	BrainRoots = {},
 	ReachedConnections = {},
@@ -289,6 +290,8 @@ function BrainrotService:KnitStart()
 			task.defer(function()
 				BrainrotService:SetupBrainrot(character, "Player")
 			end)
+
+			self.Client.CharacterAdded:Fire(player, self.BrainRoots)
 		end)
 
 		-- code playeradded

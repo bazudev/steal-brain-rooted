@@ -153,6 +153,15 @@ function HomePlayerService:FindPlatfromById(home, platformID)
 	end
 	return nil
 end
+function HomePlayerService:BackToHome(player: Player)
+	local home = self:GetPlayerHome(player)
+	if not home then
+		return nil
+	end
+
+	local targetWorld = home.target.CFrame
+	player.Character.HumanoidRootPart.CFrame = targetWorld
+end
 
 -- KNIT START
 function HomePlayerService:KnitStart()

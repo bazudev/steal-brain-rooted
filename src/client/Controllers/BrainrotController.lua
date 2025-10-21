@@ -113,7 +113,9 @@ function BrainrotController:StopAnimation(character)
 	end
 end
 function BrainrotController:AddBrainrot(id, brainrot)
+	print("add brainrot", self._Brainrots)
 	self._Brainrots[id] = brainrot
+	print("after brainrot", self._Brainrots)
 end
 function BrainrotController:RemoveBrainrot(id)
 	self._Brainrots[id] = nil
@@ -174,6 +176,16 @@ function BrainrotController:KnitStart()
 	end)
 	BrainrotService.StopAnimation:Connect(function(character)
 		BrainrotController:StopAnimation(character)
+	end)
+	BrainrotService.CharacterAdded:Connect(function(brainrots)
+		if not brainrots then
+			return
+		end
+
+		self._Brainrots = brainrots
+		for _, brainrot in pairs(self._Brainrots) do
+			BrainrotController:PlayAnimation(brainrot.object, "walk", "WalkAnim")
+		end
 	end)
 	BrainrotController:LoopController()
 	BrainrotController:InputHandle()

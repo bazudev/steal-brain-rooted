@@ -15,6 +15,9 @@ local player = Players.LocalPlayer
 local HomePlayerService
 local BrainrotService
 
+-- Controller
+local ToolsController
+
 -- TemplateController
 local HomePlayerController = Knit.CreateController({
 	Name = "HomePlayerController",
@@ -109,6 +112,7 @@ function HomePlayerController:InputHandle()
 			self._grabBrainrot = self._closestPlatform.brainrot
 			if self._grabBrainrot then
 				BrainrotService:AttatchToPlayer(self._closestPlatform.platform.CFrame, self._grabBrainrot.id)
+				ToolsController:DisableOtherTools()
 			else
 				print("no brainrot")
 			end
@@ -117,10 +121,12 @@ function HomePlayerController:InputHandle()
 				return
 			end
 			BrainrotService:MoveToPlatform(self._closestPlatform.id)
+			ToolsController:EnableTools()
 			self._grabBrainrot = nil
 		end
 		if input.KeyCode == Enum.KeyCode.R and self._grabBrainrot then
 			BrainrotService:DetatchFromPlayer()
+			ToolsController:EnableTools()
 			self._grabBrainrot = nil
 		end
 	end)
@@ -160,6 +166,9 @@ end
 function HomePlayerController:KnitStart()
 	HomePlayerService = Knit.GetService("HomePlayerService")
 	BrainrotService = Knit.GetService("BrainrotService")
+
+	ToolsController = Knit.GetController("ToolsController")
+
 	HomePlayerService.CharacterAdded:Connect(function(homes)
 		self:CharacterAdded(homes)
 	end)
