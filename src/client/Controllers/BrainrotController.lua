@@ -16,6 +16,7 @@ local BrainrotService
 
 -- variable
 local TestingTargetPosition = Vector3.new(100, 0, 100)
+local Grab = nil
 
 -- TemplateController
 local BrainrotController = Knit.CreateController({
@@ -60,8 +61,14 @@ function BrainrotController:LoopController()
 
 		if closest then
 			self._closestBrainrot = closest.id
+			if Grab then
+				Grab.Visible = true
+			end
 		else
 			self._closestBrainrot = nil
+			if Grab then
+				Grab.Visible = false
+			end
 		end
 	end)
 end
@@ -189,6 +196,12 @@ function BrainrotController:KnitStart()
 	end)
 	BrainrotController:LoopController()
 	BrainrotController:InputHandle()
+end
+function BrainrotController:KnitInit()
+	local gui = player.PlayerGui or player:WaitForChild("PlayerGui")
+	local PlayerGui = gui:WaitForChild("ScreenGui")
+	Grab = PlayerGui:WaitForChild("Grab")
+	Grab.Visible = false
 end
 
 return BrainrotController

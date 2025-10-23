@@ -18,6 +18,10 @@ local BrainrotService
 -- Controller
 local ToolsController
 
+-- Variable
+local Steal
+local Place
+
 -- TemplateController
 local HomePlayerController = Knit.CreateController({
 	Name = "HomePlayerController",
@@ -92,7 +96,16 @@ function HomePlayerController:LoopController()
 
 		if closest then
 			self._closestPlatform = closest
+			if self._grabBrainrot then
+				Place.Visible = true
+			else
+				if self._closestPlatform.brainrot then
+					Steal.Visible = true
+				end
+			end
 		else
+			Place.Visible = false
+			Steal.Visible = false
 			self._closestPlatfrom = nil
 		end
 	end)
@@ -177,6 +190,16 @@ function HomePlayerController:KnitStart()
 	end)
 	HomePlayerController:LoopController()
 	HomePlayerController:InputHandle()
+end
+function HomePlayerController:KnitInit()
+	local gui = player.PlayerGui or player:WaitForChild("PlayerGui")
+	local PlayerGui = gui:WaitForChild("ScreenGui")
+
+	Steal = PlayerGui:WaitForChild("Steal")
+	Steal.Visible = false
+
+	Place = PlayerGui:WaitForChild("Place")
+	Place.Visible = false
 end
 
 return HomePlayerController
